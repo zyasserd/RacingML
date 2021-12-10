@@ -358,23 +358,24 @@ class Env:
         self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax)
 
     def step(self, acceler, steering):
+        # Takes action, outputs state
+
         self.car.step(acceler, steering)
         
         # [return]
-        # 1. (np.array) current action
-        v1 = np.array([acceler, steering])
+        # 1. (np.array) vision distances
+        visionDistances = self.track.getVisionDistances(self.car.p, self.car.v, self.visionpointsNumber, self.visionpointsMaxAngle)
 
-        # 2. (np.array) vision distances
-        v2 = self.track.getVisionDistances(self.car.p, self.car.v, self.visionpointsNumber, self.visionpointsMaxAngle)
+        # 3. (double) completion factor [0, 1]
+        t = self.track.bezier.projectT(self.car.p)
 
-        # 3. (bool) reward (pass a checkpoint)
-        tmod = self.track.bezier.projectT(self.car.p) % (1/self.checkpointsNumber)
-        v3 = (tmod <= 0.001) or (1/self.checkpointsNumber - tmod <= 0.001)
+        # 3. (double) speed
+        speed = norm(self.car.v)
         
         # 4. (bool) is hit
-        v4 = self.track.isHit(self.car.p, self.car.radius)
+        shouldReset = self.track.isHit(self.car.p, self.car.radius)
 
-        return (v1, v2, v3, v4)
+        return (visionDistances, t, speed, shouldReset)
 
     def render(self):
         # Note: all colors can be changed from here and (Track.trackSurface)
@@ -387,6 +388,8 @@ class Env:
         pygame.draw.circle(window, [cRed, cGreen][not self.track.isHit(self.car.p, self.car.radius)], self.car.p, self.car.radius)
         # draw checkpoints
         self.track.drawCheckpoints(self.track.bezier.projectT(self.car.p), self.checkpointsNumber, cGreen, cRed)
+        # draw projection
+        # pygame.draw.circle(window, cBlue, self.track.bezier.project(self.car.p), self.car.radius)
 
 
         pygame.display.flip()
@@ -436,7 +439,7 @@ def demo3():
         sigmoid = lambda x: 1/(1 + math.exp(-50*(x-0.5)))
         feedback = env.step(a, b)
         print(feedback)
-        _, l, _, res = feedback
+        l, _, _, res = feedback
         a = 0 if l[4] < 15 else min(l[3]/100, 1)
         b1 = l[3] + l[2] + l[1] + l[0]
         b2 = l[5] + l[6] + l[7] + l[8]
