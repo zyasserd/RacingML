@@ -381,6 +381,10 @@ class Env:
         self.track = Track(self.bezier, self.trackRadius)
         self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax, self.dragCoefficient)
 
+
+
+        self.t = 0
+
     def step(self, action_hotbinary4):
         # Takes action, outputs state
 
@@ -390,8 +394,13 @@ class Env:
         # 1. (np.array) vision distances
         visionDistances = self.track.getVisionDistances(self.car.p, self.car.v, self.visionpointsNumber, self.visionpointsMaxAngle)
 
-        # 2. (double) completion factor [0, 1]
-        t = self.track.bezier.projectT(self.car.p)
+        # # 2. (double) completion factor [0, 1]
+        # t = self.track.bezier.projectT(self.car.p)
+
+        # 2. (double) CHANGE in completion factor [0, 1]
+        new_t = self.track.bezier.projectT(self.car.p)
+        t = new_t - self.t
+        self.t = new_t
 
         # 3. (double) speed
         speed = norm(self.car.v)
@@ -424,7 +433,7 @@ class Env:
             pass # empties the queue
 
     def reset(self):
-        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax)
+        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax, self.dragCoefficient)
 
     def exit(self):
         pygame.quit()
@@ -486,7 +495,8 @@ def demoKeys():
         elif keys[pygame.K_RIGHT]:
             action = np.array([0, 0, 0, 1])
 
-        if env.step(action)[3] == True:
+        state = env.step(action)
+        if state[3] == True:
             env.reset()
 
         env.render()
