@@ -55,16 +55,18 @@ class Agent:
         if load_model:
             self.model.load_weights("./RacingTrack.h5")
 
-    def step(self, env, action): # add reward to each action
-        # next_state, reward, done
-        vision_distances, t, speed, done = env.step(action[0], action[1])
+    def step(self, env, action, action_size): # add reward to each action
+        action_holder = [0 for _ in range(action_size)]
+        action_holder[action] = 1
+        action = np.array(action_holder)
+        vision_distances, t, speed, done = env.step(action)
         vision_distances = list(vision_distances)
         ### need to calculate reward here depending on the state
         reward = 0 
-        for i in range(len(vision_distances)):
-            reward -= abs(vision_distances[i]-vision_distances[len(vision_distances)-i-1])
-        reward += 1000 * t
-        reward += speed
+        # for i in range(len(vision_distances)):
+        #     reward -= abs(vision_distances[i]-vision_distances[len(vision_distances)-i-1])
+        reward += t
+        reward += speed/100
         next_state = vision_distances[:] + [t, speed]
         return next_state, reward, done
 
@@ -74,7 +76,7 @@ class Agent:
         model.add(Dense(128, input_dim=self.state_size, activation='relu'))#State is input
         model.add(Dense(128, activation='relu'))
         model.add(Dense(128, activation='relu'))
-        model.add(Dense(self.action_size, activation='linear'))#Q_Value of each action is Output
+        model.add(Dense(self.action_size, activation='sigmoid'))#Q_Value of each action is Output
         model.summary()
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
@@ -109,7 +111,7 @@ class Agent:
             self.model.fit(state, q_values, verbose=0)
 
 if __name__ == '__main__':
-    env = Env(20, 9, math.pi/2, 25, math.pi/2.5, 20, beziers[2], 2)
+    env = Env(20, 9, math.pi/2, 500, math.pi, 20, beziers[0], 2, 0)    
     env.reset()
 
     state_size = 11
@@ -122,15 +124,15 @@ if __name__ == '__main__':
     for e in range(EPISODES):
         done = False
         score = 0
-        state = [400, 400, 400, 400, 400, 400, 400, 400, 400, 0, 1.25]
+        state = [22.,  23.,  31.,  48., 101., 48., 31.,  23.,  21., 0, 1.5]
         env.reset()
         state = np.reshape(state, [1, state_size])
         while not done:
             env.render()
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
-            next_state, reward, done = agent.step(env, action)
-            reward = reward if not done else -10000 # if car hits the wall, reward = -10000
+            next_state, reward, done = agent.step(env, action, action_size)
+            reward = reward if not done else -100 # if car hits the wall, reward = -10000
             next_state = np.reshape(next_state, [1, state_size])
             # save the sample <s, a, r, s',d> to the replay memory
             agent.append_sample(state, action, reward, next_state, done)
@@ -140,6 +142,8 @@ if __name__ == '__main__':
             state = next_state
             
             score += reward
+        print("Episode: {}, Cumulative reward: {:0.2f}".format(
+            e, score))
 
         if (e % 50 == 0) & (load_model==False):
             agent.model.save_weights("RacingTrack.h5")
