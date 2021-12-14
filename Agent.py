@@ -81,13 +81,11 @@ class Agent:
 
     # get action from model using epsilon-greedy policy
     def get_action(self, state):
-        # if np.random.rand() <= self.epsilon:
-        #     return random.randrange(self.action_size)
-        # else:
-        q_value = self.model.predict(state) # [[q_value_0, q_value_1]]
-        # return np.argmax(q_value[0])
-        action = q_value[0]
-        return np.interp(action, (action.min(), action.max()), (0, 1)) # squeeze into range [0,1]
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size)
+        else:
+            q_value = self.model.predict(state) # [[q_value_0, q_value_1, q_value_2, q_value_3]]
+            return np.argmax(q_value[0])
     
     # save sample <state,action,reward,next_state,done> to the replay memory
     def append_sample(self, state, action, reward, next_state, done):
@@ -97,53 +95,25 @@ class Agent:
 
     # take a random sample from replay memory and train the neural network
     def train_model(self):
-        # print("Memory\n", self.memory)
         if len(self.memory) < self.train_start:
             return
         batch_size = min(self.batch_size, len(self.memory))
         mini_batch = random.sample(self.memory, batch_size)
 
-        state_input = np.zeros((batch_size, self.state_size))
-        next_state_input = np.zeros((batch_size, self.state_size))
-        action_input, reward_input, done_input = [], [], []
-
-        for i in range(self.batch_size):
-            state_input[i] = mini_batch[i][0]
-            action_input.append(mini_batch[i][1])
-            reward_input.append(mini_batch[i][2])
-            next_state_input[i] = mini_batch[i][3]
-            done_input.append(mini_batch[i][4])
-    
-        print("state_input \n", state_input)
-        print("action_input\n", action_input)
-        print("reward_input\n", reward_input)
-        print("done_input\n", done_input)
-
-        state_qvals = self.model.predict(state_input)
-        print("state_qvals \n", state_qvals)
-
-        print("next_state_input \n", next_state_input)
-        next_state_qvals = self.model.predict(next_state_input)
-        print("next_state_predicted \n", next_state_qvals)
-
-        for i in range(self.batch_size):
-            # Q Learning: get maximum Q value at s' from model
-            if done_input[i]:
-                state_qvals[i][action_input[i]] = reward_input[i]
-            else:
-                state_qvals[i][action_input[i]] = reward_input[i] + self.discount_factor * (
-                    np.amax(next_state_qvals[i]))
-
-        # and do the model fit
-        self.model.fit(state_input, state_predicted, batch_size=self.batch_size,
-                       epochs=1, verbose=0)
+        for state, action, reward, next_state, done in mini_batch:
+            q_update = reward
+            if not done:
+                q_update = (reward + self.discount_factor * np.amax(self.model.predict(next_state)[0]))
+            q_values = self.model.predict(state)
+            q_values[0][action] = q_update
+            self.model.fit(state, q_values, verbose=0)
 
 if __name__ == '__main__':
     env = Env(20, 9, math.pi/2, 25, math.pi/2.5, 20, beziers[2], 2)
     env.reset()
 
     state_size = 11
-    action_size = 2
+    action_size = 4
 
     agent = Agent(state_size,action_size)
 
@@ -160,14 +130,15 @@ if __name__ == '__main__':
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
             next_state, reward, done = agent.step(env, action)
+            reward = reward if not done else -10000 # if car hits the wall, reward = -10000
             next_state = np.reshape(next_state, [1, state_size])
-            # save the sample <s, a, r, s'> to the replay memory
+            # save the sample <s, a, r, s',d> to the replay memory
             agent.append_sample(state, action, reward, next_state, done)
             # every time step do the training
             agent.train_model()
 
             state = next_state
-            reward = reward if not done else -1000 # if car hits the wall, reward = -1000
+            
             score += reward
 
         if (e % 50 == 0) & (load_model==False):
