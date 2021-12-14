@@ -432,7 +432,7 @@ def demo2():
         env.render() 
 
 def demo3():
-    env = Env(20, 9, math.pi/2, 25, math.pi/2.5, 20, beziers[2], 2)
+    env = Env(20, 20, math.pi/2, 25, math.pi/2.5, 20, beziers[2], 2)
 
     a, b = 1, 0.75
     while True:
