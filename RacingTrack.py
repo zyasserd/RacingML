@@ -249,6 +249,21 @@ beziers = [
                     (200, 0),
                     (450, 50),
                     (450, 300)])).continuousClosure().ps,
+    np.array([
+        (   0, -100),
+        (  50, -100),
+        ( 100,  -50),
+        ( 100,    0),
+        ( 100,   50),
+        (  50,  100),
+        (   0,  100),
+        ( -50,  100),
+        (-100,   50),
+        (-100,    0),
+        (-100,  -50),
+        ( -50, -100),
+        (   0, -100),
+    ])*1.5 + np.array([200, 220])
 ]
 
 
@@ -307,7 +322,7 @@ class Track:
 
 
 class Car:
-    def __init__(self, track: Track, radius, accelerMax, steeringMax):
+    def __init__(self, track: Track, radius, accelerMax, steeringMax, dragCoefficient):
         self.track = track
         self.radius = radius
 
@@ -317,27 +332,35 @@ class Car:
         self.accelerMax = accelerMax
         self.steeringMax = steeringMax
 
+        self.dragCoefficient = dragCoefficient
+
         #! Stuff that could be changed too
-        self.dragCoefficient = 0.001
         self.dt = 0.01
 
-    def step(self, acceler, steering):
-        assert(0 <= acceler <= 1)
-        assert(0 <= steering <= 1)
+    def step(self, action_hotbinary4):
+        assert(action_hotbinary4.shape == (4,))
+        
+        acceler = 0
+        steering = 0
+        if (action_hotbinary4 == np.array([1, 0, 0, 0])).all(): # Do Nothing
+            pass
+        elif (action_hotbinary4 == np.array([0, 1, 0, 0])).all(): # Acc
+            acceler = self.accelerMax
+        elif (action_hotbinary4 == np.array([0, 0, 1, 0])).all(): # left
+            steering = -self.steeringMax
+        elif (action_hotbinary4 == np.array([0, 0, 0, 1])).all(): # right
+            steering = self.steeringMax
+        else:
+            raise ValueError("argument should be hot-binary encoded np-array with length 4")
 
-        acceler  = acceler
-        steering = (steering - 1/2)*2
-        acceler  *= self.accelerMax
-        steering *= self.steeringMax
-
-
-        self.v += self.dt * (acceler * normalize(self.v) - self.dragCoefficient * self.v**2)
+        self.v += self.dt * (acceler - self.dragCoefficient * norm(self.v)**2) * normalize(self.v)
+        # self.v += self.dt * (acceler) * normalize(self.v)
         self.v = rotate(self.v, steering*self.dt)
         self.p += self.dt * self.v
 
 
 class Env:
-    def __init__(self, checkpointsNumber, visionpointsNumber, visionpointsMaxAngle, accelerMax, steeringMax, trackRadius, bezier, carRadius):
+    def __init__(self, checkpointsNumber, visionpointsNumber, visionpointsMaxAngle, accelerMax, steeringMax, trackRadius, bezier, carRadius, dragCoefficient=0.001):
         global window
 
         self.checkpointsNumber = checkpointsNumber
@@ -350,23 +373,24 @@ class Env:
         self.bezier = bezier
         self.carRadius = carRadius
 
+        self.dragCoefficient = dragCoefficient
     
         pygame.init()
         window = pygame.display.set_mode(dim)
 
         self.track = Track(self.bezier, self.trackRadius)
-        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax)
+        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax, self.dragCoefficient)
 
-    def step(self, acceler, steering):
+    def step(self, action_hotbinary4):
         # Takes action, outputs state
 
-        self.car.step(acceler, steering)
+        self.car.step(action_hotbinary4)
         
         # [return]
         # 1. (np.array) vision distances
         visionDistances = self.track.getVisionDistances(self.car.p, self.car.v, self.visionpointsNumber, self.visionpointsMaxAngle)
 
-        # 3. (double) completion factor [0, 1]
+        # 2. (double) completion factor [0, 1]
         t = self.track.bezier.projectT(self.car.p)
 
         # 3. (double) speed
@@ -449,6 +473,26 @@ def demo3():
 
         env.render()
 
+def demoKeys():
+    env = Env(20, 9, math.pi/2, 100, math.pi, 20, beziers[3], 2)
+
+    while True:
+        action = np.array([1, 0, 0, 0])
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            action = np.array([0, 1, 0, 0])
+        elif keys[pygame.K_LEFT]:
+            action = np.array([0, 0, 1, 0])
+        elif keys[pygame.K_RIGHT]:
+            action = np.array([0, 0, 0, 1])
+
+        if env.step(action)[3] == True:
+            env.reset()
+
+        env.render()
+
+        
+
 
 if __name__ == "__main__":
-    demo3()
+    demoKeys()
