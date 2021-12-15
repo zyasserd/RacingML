@@ -424,7 +424,7 @@ class Env:
             pass # empties the queue
 
     def reset(self):
-        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax)
+        self.car = Car(self.track, self.carRadius, self.accelerMax, self.steeringMax, self.dragCoefficient)
 
     def exit(self):
         pygame.quit()
@@ -474,7 +474,7 @@ def demo3():
         env.render()
 
 def demoKeys():
-    env = Env(20, 9, math.pi/2, 100, math.pi, 20, beziers[3], 2)
+    env = Env(20, 9, math.pi/2, 1000, math.pi, 20, beziers[3], 2)
 
     while True:
         action = np.array([1, 0, 0, 0])
@@ -496,3 +496,4 @@ def demoKeys():
 
 if __name__ == "__main__":
     demoKeys()
+    # demo3()
