@@ -65,7 +65,7 @@ class Agent:
         reward = 0 
         # for i in range(len(vision_distances)):
         #     reward -= abs(vision_distances[i]-vision_distances[len(vision_distances)-i-1])
-        reward += t
+        reward += t*100
         reward += speed/100
         next_state = vision_distances[:] + [t, speed]
         return next_state, reward, done
@@ -132,7 +132,7 @@ if __name__ == '__main__':
             # get action for the current state and go one step in environment
             action = agent.get_action(state)
             next_state, reward, done = agent.step(env, action, action_size)
-            reward = reward if not done else -100 # if car hits the wall, reward = -10000
+            reward = reward if not done else -1000 # if car hits the wall, reward = -10000
             next_state = np.reshape(next_state, [1, state_size])
             # save the sample <s, a, r, s',d> to the replay memory
             agent.append_sample(state, action, reward, next_state, done)
