@@ -400,7 +400,7 @@ class Env:
 
         # 2. (double) CHANGE in completion factor [0, 1]
         new_t = self.track.bezier.projectT(self.car.p)
-        t = new_t - self.t
+        dt = new_t - self.t
         self.t = new_t
 
         # 3. (double) speed
@@ -409,7 +409,7 @@ class Env:
         # 4. (bool) is hit
         shouldReset = self.track.isHit(self.car.p, self.car.radius)
 
-        return (visionDistances, t, speed, shouldReset)
+        return (visionDistances, self.t, dt, speed, shouldReset)
 
     def render(self):
         # Note: all colors can be changed from here and (Track.trackSurface)
