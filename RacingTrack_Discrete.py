@@ -403,13 +403,13 @@ class Env:
         dt = new_t - self.t
         self.t = new_t
 
-        # 3. (double) speed
-        speed = norm(self.car.v)
+        # 3. (double) distance to bezier
+        distance = self.track.bezier.distance(self.car.p)
         
         # 4. (bool) is hit
         shouldReset = self.track.isHit(self.car.p, self.car.radius)
 
-        return (visionDistances, self.t, dt, speed, shouldReset)
+        return (visionDistances, self.t, dt, distance, shouldReset)
 
     def render(self):
         # Note: all colors can be changed from here and (Track.trackSurface)
@@ -484,7 +484,7 @@ def demo3():
         env.render()
 
 def demoKeys():
-    env = Env(20, 9, math.pi/2, 100, math.pi, 20, beziers[3], 2)
+    env = Env(20, 9, math.pi/2, 100, math.pi, 20, beziers[3], 2, 0.01)
 
     while True:
         action = np.array([1, 0, 0, 0])
@@ -497,7 +497,8 @@ def demoKeys():
             action = np.array([0, 0, 0, 1])
 
         state = env.step(action)
-        if state[3] == True:
+        print(state[3])
+        if state[4] == True:
             env.reset()
 
         env.render()
@@ -506,7 +507,4 @@ def demoKeys():
 
 
 if __name__ == "__main__":
-    # demoKeys()
-    env = Env(20, 9, math.pi/2, 100, math.pi, 20, beziers[3], 2)
-    while True:
-        env.render()
+    demoKeys()

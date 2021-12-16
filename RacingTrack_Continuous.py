@@ -393,13 +393,13 @@ class Env:
         dt = new_t - self.t
         self.t = new_t
 
-        # 3. (double) speed
-        speed = norm(self.car.v)
+        # 3. (double) distance to bezier
+        distance = self.track.bezier.distance(self.car.p)
         
         # 4. (bool) is hit
         shouldReset = self.track.isHit(self.car.p, self.car.radius)
 
-        return (visionDistances, self.t, dt, speed, shouldReset)
+        return (visionDistances, self.t, dt, distance, shouldReset)
 
     def render(self):
         # Note: all colors can be changed from here and (Track.trackSurface)
@@ -437,7 +437,7 @@ def demo1():
     env = Env(20, 9, math.pi/8, 250, math.pi/2.5, 20, beziers[2], 5)
 
     while True:
-        if env.step(1, 0.75)[3] == True:
+        if env.step(1, 0.75)[4] == True:
             env.reset()
 
         env.render()
@@ -463,8 +463,8 @@ def demo3():
     while True:
         sigmoid = lambda x: 1/(1 + math.exp(-50*(x-0.5)))
         feedback = env.step(a, b)
-        print(feedback)
-        l, _, _, res = feedback
+        print(feedback[2])
+        l, _, _, _, res = feedback
         a = 0 if l[4] < 15 else min(l[3]/100, 1)
         b1 = l[3] + l[2] + l[1] + l[0]
         b2 = l[5] + l[6] + l[7] + l[8]
